@@ -1,0 +1,130 @@
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-image: url("img/untitled_34_06.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+#opponent-hand,
+#hand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#opponent-hand .card,
+#hand .card {
+  background-size: cover;
+}
+
+.card,
+.picker-card {
+  width: 100px;
+  margin: 0 -20px;
+}
+
+.card:hover,
+.picker-card:hover {
+  transform: translateY(-40px) !important;
+  transition: all 0.08s ease-in-out; /* Smooth transition for scaling */
+}
+
+.card,
+.picker-card {
+  transition: all 0.05s ease-in-out; /* Smooth transition for scaling */
+}
+
+#game-area {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+#deck {
+  width: 100px;
+  height: 140px;
+  background-size: cover;
+  position: absolute;
+}
+
+#deck {
+  z-index: 10; /* Ensure the drop area is above the played cards */
+}
+
+.card-played {
+  width: 100px;
+  position: absolute;
+  transition: transform 0.3s ease;
+  z-index: 1; /* Played cards should be below the drop area */
+  transform: rotateZ(calc(var(--rotation-offset)));
+}
+
+.active {
+  background-color: rgb(21, 86, 146, 0.8);
+}
+
+#player-info {
+  padding: 10px;
+  color: white;
+}
+
+.card {
+  transition: all 0.5s ease !important;
+}
+
+.result-overlay {
+  position: fixed; /* Make it cover the whole screen */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.2
+  ); /* Semi-transparent white background */
+  backdrop-filter: blur(5px); /* Blur effect */
+  z-index: 1000; /* Ensure it's above other content */
+}
+
+.result-overlay h1,
+.result-overlay button {
+  text-align: center;
+}
+
+.drawCard {
+  width: 100px !important;
+  position: absolute;
+  z-index: 10;
+  transition: transform 0.5s ease-in-out; /* Smooth transition for transform */
+}
+
+#draw-pile {
+  transition: transform 0.3s ease-in-out; /* Smooth transition for transform */
+
+  display: flex;
+  position: absolute;
+  left: 40px !important;
+  background-size: cover;
+  justify-content: center;
+  align-items: center;
+  width: 200px;
+  height: 250px;
+}
+
+.maincard:hover {
+  transform: scale(
+    1.2
+  ); /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
+  transition: all 0.08s ease-in-out; /* Smooth transition for scaling */
+}
