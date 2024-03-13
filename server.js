@@ -18,9 +18,20 @@ app.get("/game/:gameId", (req, res) => {
   console.log("Requested game ID:", gameId);
 
   if (games[gameId]) {
-    res.sendFile(__dirname + "/public/game.html");
+    //check if game is full
+
+    if (games[gameId].players.length >= 2) {
+      res.redirect("/lobby");
+    } else res.sendFile(__dirname + "/public/game.html");
   } else {
-    res.redirect("/lobby");
+    games[gameId] = {
+      players: [],
+      currentPlayerIndex: 0,
+      deck: [],
+      currentCard: null,
+      cardstodraw: 0,
+    };
+    res.sendFile(__dirname + "/public/game.html");
   }
 });
 
@@ -135,20 +146,22 @@ io.on("connection", (socket) => {
         game.cardstodraw += 2;
         console.log("next has to draw " + game.cardstodraw + " cards");
       } else {
+        game.cardstodraw += 2;
         let cards = [];
-        for (let i = 0; i < 2; i++) {
+        // draw as many cards as needed
+        for (let i = 0; i < game.cardstodraw; i++) {
           let card = generateCard("notstart");
           cards.push(card);
-          game.players[nextPlayerIndex].hand.push(card);
         }
-
         game.players[nextPlayerIndex].emit("drawCards", cards);
-        for (let i = 0; i < 2; i++) {
-          game.players[nextPlayerIndex].handSize++;
-        }
+        game.players[nextPlayerIndex].handSize += game.cardstodraw;
 
-        game.players[game.currentPlayerIndex].emit("opponentHandSize", 2);
-        game.currentPlayerIndex = nextPlayerIndex;
+        game.players[game.currentPlayerIndex].emit(
+          "opponentHandSize",
+          game.cardstodraw
+        );
+
+        game.cardstodraw = 0;
       }
     }
 
@@ -199,6 +212,15 @@ io.on("connection", (socket) => {
       game.players[opponentIndex].emit("opponentHandSize", 1);
       updateTurn(game);
     }
+  });
+
+  socket.on("requestGames", () => {
+    const gamesInfo = Object.keys(games).map((gameId) => ({
+      gameId,
+      playersCount: games[gameId].players.length, // Make sure this is correctly accessing the players array
+      isFull: games[gameId].players.length >= 2,
+    }));
+    socket.emit("gamesList", gamesInfo);
   });
 });
 

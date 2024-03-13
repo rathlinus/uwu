@@ -28,3 +28,26 @@ socket.on("joinedGame", (gameId) => {
 socket.on("error", (message) => {
   alert(`Error: ${message}`);
 });
+
+socket.emit("requestGames");
+
+socket.on("gamesList", (games) => {
+  const gamesListContainer = document.getElementById("gamesList");
+  gamesListContainer.innerHTML = ""; // Clear existing list
+
+  games.forEach((game) => {
+    const gameElement = document.createElement("div");
+    gameElement.textContent = `Game ID: ${game.gameId} - ${game.playersCount}/2 players`;
+
+    if (!game.isFull) {
+      const joinButton = document.createElement("button");
+      joinButton.textContent = "Join";
+      joinButton.onclick = () => {
+        document.getElementById("gameId").value = game.gameId;
+        socket.emit("joinGame", game.gameId);
+      };
+      gameElement.appendChild(joinButton);
+    }
+    gamesListContainer.appendChild(gameElement);
+  });
+});
