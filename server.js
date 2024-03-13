@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const { start } = require("repl");
 const socketIo = require("socket.io");
 const { v4: uuidv4 } = require("uuid");
 
@@ -9,190 +10,253 @@ const io = socketIo(server);
 
 app.use(express.static("public"));
 
-let deck = [];
-let currentCard = null;
+let games = {};
 
-server.listen(3000, () => {
-  console.log("Server is running on port 3000");
+app.get("/game/:gameId", (req, res) => {
+  const gameId = req.params.gameId;
+
+  console.log("Requested game ID:", gameId);
+
+  if (games[gameId]) {
+    res.sendFile(__dirname + "/public/game.html");
+  } else {
+    res.redirect("/lobby");
+  }
 });
 
-let players = [];
-let currentPlayerIndex = 0;
-let cardstodraw = 0;
+app.get("/lobby", (req, res) => {
+  res.sendFile(__dirname + "/public/lobby.html");
+});
 
 io.on("connection", (socket) => {
-  console.log("player connected");
-  players.push(socket);
+  socket.on("createGame", () => {
+    const gameId = uuidv4();
+    games[gameId] = {
+      players: [socket],
+      currentPlayerIndex: 0,
+      deck: [],
+      currentCard: null,
+      cardstodraw: 0,
+    };
+    socket.currentGameId = gameId; // Store gameId on the socket object
+    socket.emit("gameCreated", gameId);
+  });
 
-  if (players.length === 2) {
-    startGame();
-  }
+  socket.on("joinGame", (gameId) => {
+    if (games[gameId] && games[gameId].players.length < 2) {
+      //check if player is already in the game
+      for (let i = 0; i < games[gameId].players.length; i++) {
+        if (games[gameId].players[i] === socket) {
+          return;
+        }
+      }
+
+      games[gameId].players.push(socket);
+      socket.currentGameId = gameId; // Store gameId on the socket object
+      socket.emit("joinedGame", gameId);
+      console.log(`Player joined game with ID: ${gameId}`);
+      if (games[gameId].players.length === 2) {
+        startGame(gameId);
+      }
+    } else {
+      socket.emit(
+        "error",
+        "Unable to join game: Invalid game ID or game is full."
+      );
+    }
+  });
 
   socket.on("disconnect", () => {
-    players = players.filter((player) => player !== socket);
-    // Adjust currentPlayerIndex if necessary
-    if (players.length > 0 && currentPlayerIndex >= players.length) {
-      currentPlayerIndex = 0; // Reset to the first player if the current player disconnects
+    const gameId = socket.currentGameId;
+    if (gameId && games[gameId]) {
+      const game = games[gameId];
+      const playerIndex = game.players.findIndex((s) => s === socket);
+      if (playerIndex !== -1) {
+        game.players.splice(playerIndex, 1); // Remove the disconnected player
+        // Additional logic here to handle the game state when players disconnect
+      }
     }
   });
 
   socket.on("playCard", (card) => {
-    if (socket === players[currentPlayerIndex]) {
-      // Check if the player has the card in their hand
+    const currentGameId = socket.currentGameId; // Retrieve the currentGameId from the socket
+    if (!currentGameId || !games[currentGameId]) return;
+    const game = games[currentGameId];
+    const playerIndex = game.players.findIndex((s) => s === socket);
 
-      if (!socket.hand.find((c) => c.uuid === card.uuid)) {
-        players[currentPlayerIndex].emit("invalidMove", card);
-        return;
-      }
-      // Check if the card can be played
-      if (!checkmove(card, currentCard)) {
-        players[currentPlayerIndex].emit("invalidMove", card);
-        return;
-      }
-
-      console.log("Valid move");
-
-      players[(currentPlayerIndex + 1) % players.length].emit(
-        "opponentHandSize",
-        -1
-      );
-
-      currentCard = card;
-      io.emit("cardPlayed", card);
-
-      // Check for special cards like "draw4"
-      if (card.value === "draw4") {
-        let nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
-
-        let cards = [];
-        for (let i = 0; i < 4; i++) {
-          let card = generateCard("notstart");
-
-          cards.push(card);
-
-          players[nextPlayerIndex].hand.push(card);
-        }
-
-        players[nextPlayerIndex].emit("drawCards", cards);
-
-        players[nextPlayerIndex].handSize++;
-        players[nextPlayerIndex].handSize++;
-        players[nextPlayerIndex].handSize++;
-        players[nextPlayerIndex].handSize++;
-
-        players[currentPlayerIndex].emit("opponentHandSize", 4);
-
-        currentPlayerIndex = (nextPlayerIndex + 1) % players.length;
-      }
-
-      if (card.value === "draw2") {
-        let nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
-
-        //check if the next player has a draw2 card
-
-        if (players[nextPlayerIndex].hand.find((c) => c.value === "draw2")) {
-          cardstodraw += 2;
-          console.log("next has to draw " + cardstodraw + " cards");
-          console.log(players[nextPlayerIndex].hand);
-        } else {
-          let cards = [];
-          for (let i = 0; i < 2; i++) {
-            let card = generateCard("notstart");
-
-            cards.push(card);
-
-            players[nextPlayerIndex].hand.push(card);
-            console.log(players[nextPlayerIndex].hand);
-          }
-
-          players[nextPlayerIndex].emit("drawCards", cards);
-
-          // new hand size
-
-          players[nextPlayerIndex].handSize++;
-          players[nextPlayerIndex].handSize++;
-
-          players[currentPlayerIndex].emit("opponentHandSize", 2);
-
-          currentPlayerIndex = (nextPlayerIndex + 1) % players.length;
-        }
-      }
-
-      // Optionally, you can skip the next player's turn after drawing cards
-      updateTurn(card);
+    if (playerIndex !== game.currentPlayerIndex) {
+      socket.emit("invalidMove", "Not your turn");
+      return;
     }
 
-    socket.handSize--;
+    const player = game.players[playerIndex];
 
-    //remove the card from the player's hand
-    socket.hand = socket.hand.filter((c) => c.uuid !== card.uuid);
+    // Check if the player has the card in their hand
+    if (!player.hand.find((c) => c.uuid === card.uuid)) {
+      socket.emit("invalidMove", card);
+      return;
+    }
 
-    console.log(socket.hand);
-    checkForWinner(socket);
+    // Check if the card can be played
+    if (!checkmove(card, game.currentCard)) {
+      socket.emit("invalidMove", card);
+      return;
+    }
+
+    console.log("Valid move");
+    let nextPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+    game.players[nextPlayerIndex].emit("opponentHandSize", -1);
+
+    game.currentCard = card;
+    game.players.forEach((playerSocket) => {
+      playerSocket.emit("cardPlayed", card);
+    });
+
+    // Check for special cards like "draw4"
+    if (card.value === "draw4") {
+      let cards = [];
+      for (let i = 0; i < 4; i++) {
+        let card = generateCard("notstart");
+        cards.push(card);
+        game.players[nextPlayerIndex].hand.push(card);
+      }
+
+      game.players[nextPlayerIndex].emit("drawCards", cards);
+      for (let i = 0; i < 4; i++) {
+        game.players[nextPlayerIndex].handSize++;
+      }
+
+      game.players[game.currentPlayerIndex].emit("opponentHandSize", 4);
+      game.currentPlayerIndex = nextPlayerIndex;
+    }
+
+    if (card.value === "draw2") {
+      if (game.players[nextPlayerIndex].hand.find((c) => c.value === "draw2")) {
+        game.cardstodraw += 2;
+        console.log("next has to draw " + game.cardstodraw + " cards");
+      } else {
+        let cards = [];
+        for (let i = 0; i < 2; i++) {
+          let card = generateCard("notstart");
+          cards.push(card);
+          game.players[nextPlayerIndex].hand.push(card);
+        }
+
+        game.players[nextPlayerIndex].emit("drawCards", cards);
+        for (let i = 0; i < 2; i++) {
+          game.players[nextPlayerIndex].handSize++;
+        }
+
+        game.players[game.currentPlayerIndex].emit("opponentHandSize", 2);
+        game.currentPlayerIndex = nextPlayerIndex;
+      }
+    }
+
+    // Optionally, you can skip the next player's turn after drawing cards
+    updateTurn(game, card);
+
+    player.handSize--;
+    player.hand = player.hand.filter((c) => c.uuid !== card.uuid);
+    console.log(player.hand);
+    checkForWinner(game, player);
   });
 
   // When a card is drawn, the server sends a new card to the player and notifies the opponent
   socket.on("drawCard", () => {
+    const currentGameId = socket.currentGameId; // Retrieve the currentGameId from the socket
+    if (!currentGameId || !games[currentGameId]) return;
+    const game = games[currentGameId];
+    const playerIndex = game.players.findIndex((s) => s === socket);
     console.log("player drew a card");
-    if (socket === players[currentPlayerIndex]) {
-      if (cardstodraw > 0) {
-        console.log("player has to draw " + cardstodraw + " cards");
-        let cards = [];
-        for (let i = 0; i < cardstodraw; i++) {
-          let card = generateCard("notstart");
 
-          cards.push(card);
+    if (playerIndex !== game.currentPlayerIndex) {
+      socket.emit("error", "Not your turn");
+      return;
+    }
 
-          socket.hand.push(card);
-        }
+    const player = game.players[playerIndex];
 
-        socket.emit("drawCards", cards);
-
-        socket.handSize += cardstodraw;
-
-        cardstodraw = 0;
-        updateTurn();
-        return;
+    if (game.cardstodraw > 0) {
+      console.log(`player has to draw ${game.cardstodraw} cards`);
+      let cards = [];
+      for (let i = 0; i < game.cardstodraw; i++) {
+        let card = generateCard("notstart");
+        cards.push(card);
+        player.hand.push(card);
       }
-      socket.handSize++;
+
+      socket.emit("drawCards", cards);
+      player.handSize += game.cardstodraw;
+      game.cardstodraw = 0;
+      updateTurn(game);
+    } else {
+      player.handSize++;
       const card = generateCard("notstart");
+      player.hand.push(card);
       socket.emit("drawCard", card);
 
-      const opponentIndex = (currentPlayerIndex + 1) % players.length;
-      players[opponentIndex].emit("opponentHandSize", 1);
-      updateTurn();
+      const opponentIndex = (game.currentPlayerIndex + 1) % game.players.length;
+      game.players[opponentIndex].emit("opponentHandSize", 1);
+      updateTurn(game);
     }
   });
 });
 
-function updateTurn(card) {
+function updateTurn(game, card) {
   if (card) {
     if (card.value === "skip") {
-      currentPlayerIndex = (currentPlayerIndex + 2) % players.length;
-      players[currentPlayerIndex].emit("yourTurn");
+      game.currentPlayerIndex =
+        (game.currentPlayerIndex + 2) % game.players.length;
+      game.players[game.currentPlayerIndex].emit("yourTurn");
       return;
     }
 
-    if (card && card.value === "reverse") {
-      players.reverse();
+    if (card.value === "reverse") {
+      game.players.reverse();
+
+      // Update currentPlayerIndex to reflect the new order
+      game.currentPlayerIndex =
+        game.players.length - game.currentPlayerIndex - 1;
     }
   }
-  currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-  players[currentPlayerIndex].emit("yourTurn");
+
+  // Advance to the next player
+  game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+  game.players[game.currentPlayerIndex].emit("yourTurn");
 }
 
-function resetGame() {
+function resetGame(game) {
   // Clear players' hands
-  players.forEach((player) => {
-    player.emit("clearHands");
+  game.players.forEach((playerSocket) => {
+    playerSocket.emit("clearHands");
+    // Resetting each player's hand and handSize within the game context
+    const playerIndex = game.players.findIndex((s) => s === playerSocket);
+    if (playerIndex !== -1) {
+      game.players[playerIndex].hand = [];
+      game.players[playerIndex].handSize = 0;
+    }
   });
 }
 
-function startGame() {
-  resetGame();
-  console.log("Game started");
+function startGame(gameId) {
+  const game = games[gameId];
+
+  if (game.players.length < 2) {
+    console.log(game.players);
+    return;
+  }
+
+  // log all players
+
+  for (let i = 0; i < game.players.length; i++) {
+    console.log(game.players[i].id);
+  }
+  console.log("Starting game for game ID:", gameId);
+  resetGame(game);
+  console.log("Game started for game ID:", gameId);
+
   // Deal cards and set hand sizes
-  players.forEach((player, index) => {
+  game.players.forEach((playerSocket, index) => {
     const hand = [];
 
     for (let i = 0; i < 7; i++) {
@@ -200,24 +264,28 @@ function startGame() {
     }
 
     // Store the hand in the player object
-    player.hand = hand;
+    const playerIndex = game.players.findIndex((s) => s === playerSocket);
+    game.players[playerIndex].hand = hand;
+    game.players[playerIndex].handSize = hand.length;
 
-    player.emit("dealCards", hand);
-    player.handSize = hand.length;
+    playerSocket.emit("dealCards", hand);
 
     // Notify each player about their opponent's hand size
-    let opponentIndex = (index + 1) % players.length;
-    players[opponentIndex].emit("opponentHandSize", hand.length);
+    let opponentIndex = (index + 1) % game.players.length;
+    game.players[opponentIndex].emit("opponentHandSize", hand.length);
   });
 
-  io.emit("updateDeck", deck.length);
-
   // Draw the first card from the deck and emit a 'cardPlayed' event
-  currentCard = generateCard("start");
-  io.emit("cardPlayed", currentCard);
-  io.emit("updateDeck", deck.length);
-  currentPlayerIndex = Math.floor(Math.random() * players.length);
-  players[currentPlayerIndex].emit("yourTurn");
+  game.currentCard = generateCard("start");
+
+  // Notify each player about the current card
+  game.players.forEach((playerSocket) => {
+    playerSocket.emit("cardPlayed", game.currentCard);
+  });
+
+  // Randomly select who starts the game
+  game.currentPlayerIndex = Math.floor(Math.random() * game.players.length);
+  game.players[game.currentPlayerIndex].emit("yourTurn");
 }
 
 const colors = ["red", "green", "blue", "yellow"];
@@ -246,14 +314,6 @@ function generateCard(start) {
   return { color: cardColor, value: randomCard, uuid: uuid };
 }
 
-function shuffleDeck(deck) {
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]]; // swap
-  }
-  return deck;
-}
-
 function checkmove(card, currentCard) {
   if (card.value === "wild" || card.value === "draw4") {
     if (card.color === "white") {
@@ -276,15 +336,22 @@ function checkmove(card, currentCard) {
   return card.color === currentCard.color || card.value === currentCard.value;
 }
 
-function checkForWinner(player) {
+function checkForWinner(game, playerSocket) {
+  const playerIndex = game.players.findIndex((s) => s === playerSocket);
+  const player = game.players[playerIndex];
+
   if (player.handSize === 0) {
     // Player won
-    player.emit("gameEnd", "win");
+    playerSocket.emit("gameEnd", "win");
 
-    // Find and notify the loser
-    let loser = players.find((p) => p !== player);
-    if (loser) {
-      loser.emit("gameEnd", "lose");
-    }
+    // Find and notify the loser(s)
+    game.players.forEach((p, idx) => {
+      if (idx !== playerIndex) {
+        p.emit("gameEnd", "lose");
+      }
+    });
   }
 }
+
+const port = 3000;
+server.listen(port, () => console.log(`Listening on port ${port}`));

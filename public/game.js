@@ -21,7 +21,7 @@ socket.on("dealCards", function (hand) {
         playCardid(card);
       }
     });
-    cardElement.src = `img/${card.color}_${card.value}.png`;
+    cardElement.src = `/img/${card.color}_${card.value}.png`;
     cardElement.setAttribute("data-color", card.color);
     cardElement.setAttribute("data-value", card.value);
     cardElement.id = card.uuid;
@@ -58,7 +58,7 @@ socket.on("opponentHandSize", function (change) {
     for (let i = 0; i < change; i++) {
       let cardPlaceholder = document.createElement("img");
       cardPlaceholder.classList.add("card");
-      cardPlaceholder.src = "img/white.png";
+      cardPlaceholder.src = "/img/white.png";
       // Start with reduced opacity and size for animation
       cardPlaceholder.style.opacity = "0";
       cardPlaceholder.style.transform = "scale(0.5)";
@@ -129,7 +129,7 @@ socket.on("drawCard", function (card) {
       playCardid(card);
     }
   });
-  cardElement.src = `img/${card.color}_${card.value}.png`;
+  cardElement.src = `/img/${card.color}_${card.value}.png`;
   cardElement.setAttribute("data-color", card.color);
   cardElement.setAttribute("data-value", card.value);
   cardElement.id = card.uuid;
@@ -169,7 +169,7 @@ socket.on("drawCards", function (cards) {
         playCardid(card);
       }
     });
-    cardElement.src = `img/${card.color}_${card.value}.png`;
+    cardElement.src = `/img/${card.color}_${card.value}.png`;
     cardElement.setAttribute("data-color", card.color);
     cardElement.setAttribute("data-value", card.value);
     cardElement.id = card.uuid;
@@ -209,7 +209,7 @@ socket.on("cardPlayed", function (card) {
   isMyTurn = false;
   var cardElement = document.createElement("img");
   cardElement.classList.add("card", "card-played");
-  cardElement.src = `img/${card.color}_${card.value}.png`;
+  cardElement.src = `/img/${card.color}_${card.value}.png`;
   const rotationOffset = Math.random() * 40 - 20; // consistent rotation range
   cardElement.style.setProperty("--rotation-offset", `${rotationOffset}deg`);
   document.getElementById("game-area").appendChild(cardElement);
@@ -439,7 +439,7 @@ function toggleColorPicker(cardId) {
         selectColorfromspecial(cardId, cardType, color);
       });
 
-      colorOption.src = `img/${color}_${cardType}.png`;
+      colorOption.src = `/img/${color}_${cardType}.png`;
       colorOption.style.transition = "transform 0.5s, opacity 0.5s";
       colorOption.style.opacity = "0";
       colorPicker.appendChild(colorOption);
@@ -531,3 +531,9 @@ document.getElementById("draw-pile").addEventListener("mouseout", function () {
   });
   this.style.transform = "translateY(0px)";
 });
+
+// find game id
+const path = window.location.pathname;
+const gameId = path.split("/").pop();
+
+socket.emit("joinGame", gameId);
