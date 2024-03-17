@@ -1,5 +1,7 @@
+const e = require("express");
 const express = require("express");
 const http = require("http");
+const { emit } = require("process");
 const { start } = require("repl");
 const socketIo = require("socket.io");
 const { v4: uuidv4 } = require("uuid");
@@ -18,7 +20,6 @@ app.get("/game/:gameId", (req, res) => {
   if (games[gameId]) {
     //idle for half a second
 
-    console.log(games[gameId].players.length);
     if (games[gameId].players.length >= 4) {
       console.log("Game is full");
       res.redirect("/");
@@ -80,9 +81,8 @@ io.on("connection", (socket) => {
       socket.currentGameId = gameId; // Store gameId on the socket object
       socket.emit("joinedGame", gameId);
       console.log(`Player joined game with ID: ${gameId}`);
-      if (games[gameId].players.length === 4) {
-        startGame(gameId);
-      }
+
+      startGame(gameId);
     } else {
       socket.emit(
         "error",
@@ -91,8 +91,25 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("startGame", (gameId) => {
-    startGame(gameId, "start");
+  socket.on("startGame", (gameId, username) => {
+    //add username to player
+    const playerIndex = games[gameId].players.findIndex((s) => s === socket);
+    games[gameId].players[playerIndex].username = username;
+
+    let everyonehasusername = true;
+    // to start every user must have a username
+    games[gameId].players.forEach((player) => {
+      if (!player.username) {
+        console.log("Not all players have a username");
+        everyonehasusername = false;
+      }
+    });
+
+    if (everyonehasusername) {
+      startGame(gameId, "start");
+    } else {
+      emitusernamelist(gameId);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -102,6 +119,16 @@ io.on("connection", (socket) => {
       game.players = game.players.filter((player) => player !== socket);
     }
     refreshGamesList();
+
+    if (gameId && games[gameId].players.length === 0) {
+      delete games[gameId];
+      return;
+    }
+    //if gameid is undefined, the player is in the lobby
+    if (!gameId) {
+      return;
+    }
+    emitusernamelist(gameId);
   });
 
   socket.on("playCard", (card) => {
@@ -365,8 +392,11 @@ function emitPlayerHandSizes(game) {
 
   // Iterate over each player to calculate hand sizes
   game.players.forEach((player) => {
-    // Assuming each player object has a 'hand' property which is an array of their cards
-    handSizes[player.id] = player.hand.length;
+    //also add the usernames to the handSizes object
+    handSizes[player.id] = {
+      handSize: player.hand.length,
+      username: player.username,
+    };
   });
 
   // Now emit the hand sizes to each player
@@ -375,8 +405,37 @@ function emitPlayerHandSizes(game) {
   });
 }
 
+function emitusernamelist(gameId) {
+  let usernames = [];
+  games[gameId].players.forEach((player) => {
+    //if username is null, write "waiting for username"
+    if (!player.username) {
+      usernames.push("Waiting for username");
+    } else {
+      usernames.push(player.username);
+    }
+  });
+
+  games[gameId].players.forEach((player) => {
+    player.emit("users", usernames);
+  });
+}
+
 function startGame(gameId, overwritestart) {
   const game = games[gameId];
+
+  let everyonehasusername = true;
+  game.players.forEach((player) => {
+    if (!player.username) {
+      console.log("Not all players have a username");
+      everyonehasusername = false;
+    }
+  });
+
+  if (!everyonehasusername) {
+    emitusernamelist(gameId);
+    return;
+  }
 
   if (game.players.length < 3) {
     if (overwritestart !== "start") {

@@ -1,0 +1,425 @@
+@import url("https://fonts.googleapis.com/css2?family=Cabin:ital,wght@0,400..700;1,400..700&display=swap");
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-image: url("img/untitled_34_06.jpg");
+  background-size: cover;
+  background-position: center;
+  color: white;
+}
+
+* {
+  font-family: "Cabin", sans-serif;
+}
+
+#opponent-hand,
+#hand,
+.opponent-hand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#opponent-hand .card,
+#hand .card,
+.opponent-hand .card {
+  background-size: cover;
+}
+
+.card,
+.picker-card {
+  width: 100px;
+  margin: 0 -20px;
+}
+
+.opponent-card {
+  width: 100px;
+  margin: 0 -20px;
+}
+
+.card:hover,
+.picker-card:hover {
+  transform: translateY(-40px) !important;
+  transition: all 0.08s ease-in-out; /* Smooth transition for scaling */
+}
+
+.card,
+.picker-card {
+  transition: all 0.05s ease-in-out; /* Smooth transition for scaling */
+}
+
+#game-area {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  width: 100%;
+  transform: translateY(-50%);
+  top: 50%;
+}
+
+#deck {
+  width: 100px;
+  height: 140px;
+  background-size: cover;
+  position: absolute;
+}
+
+#deck {
+  z-index: 10; /* Ensure the drop area is above the played cards */
+}
+
+.card-played {
+  width: 100px;
+  position: absolute;
+  transition: transform 0.3s ease;
+  z-index: 1; /* Played cards should be below the drop area */
+  transform: rotateZ(calc(var(--rotation-offset)));
+}
+
+.active {
+  background-color: rgb(21, 86, 146, 0.8);
+}
+
+#player-info {
+  padding: 10px;
+  color: white;
+}
+
+.card {
+  transition: all 0.5s ease !important;
+}
+
+/* Additional styles for the result overlay content */
+.result-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  color: white;
+  font-family: "Arial", sans-serif;
+  padding: 20px;
+  flex-direction: column; /* Align children vertically */
+}
+
+.result-overlay h1 {
+  font-size: 2.5em;
+  margin: 0 0 20px 0; /* Add space below the heading */
+  text-align: center; /* Center the text horizontally */
+}
+
+.result-overlay p {
+  font-size: 1.2em;
+  margin: 10px 0; /* Vertical spacing for each paragraph */
+  text-align: center; /* Center the text horizontally */
+}
+
+.result-overlay button {
+  padding: 10px 20px;
+  font-size: 1em;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px; /* Space above the button */
+  align-self: center; /* Center the button horizontally */
+}
+
+.result-overlay button:hover {
+  background-color: #0056b3;
+}
+
+.drawCard {
+  width: 100px !important;
+  position: absolute;
+  z-index: 10;
+  transition: transform 0.5s ease-in-out; /* Smooth transition for transform */
+}
+
+#draw-pile {
+  transition: transform 0.3s ease-in-out; /* Smooth transition for transform */
+
+  display: flex;
+  position: absolute;
+  left: 40px !important;
+  background-size: cover;
+  justify-content: center;
+  align-items: center;
+  width: 200px;
+  height: 250px;
+}
+
+.maincard:hover {
+  transform: scale(
+    1.2
+  ); /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
+  transition: all 0.08s ease-in-out; /* Smooth transition for scaling */
+}
+
+/* General style for opponent hands */
+.opponent-hand {
+  display: flex;
+  position: absolute;
+}
+
+/* Opponent 1 (top, horizontally) */
+.opponent-1 {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+}
+
+/* Opponent 2 (right side, vertically) */
+.opponent-2 {
+  right: calc(15% + 50px);
+  top: 50%;
+  flex-direction: column;
+  transform: translateY(-50%);
+  height: 50%;
+}
+
+/* Opponent 3 (left side, vertically) */
+.opponent-3 {
+  left: calc(15% + 50px);
+  top: 50%;
+  flex-direction: column;
+  transform: translateY(-50%);
+  height: 50%;
+}
+
+#opponent-1-hand .username {
+  /* center horizontally */
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 1.5em;
+  text-align: center;
+  width: 100%;
+}
+
+#opponent-2-hand .username {
+  /* center vertically */
+  position: absolute;
+  left: -50px;
+  color: white;
+  font-size: 1.5em;
+  text-align: center;
+  writing-mode: vertical-rl;
+}
+
+#opponent-3-hand .username {
+  /* center vertically */
+  position: absolute;
+  right: -50px;
+  color: white;
+  font-size: 1.5em;
+  text-align: center;
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+}
+
+#ownusername .username {
+  position: absolute;
+  bottom: 130px;
+  color: white;
+  font-size: 1.5em;
+  text-align: center;
+  width: 100%;
+}
+
+.vertical {
+  margin: -66px 0 !important;
+}
+
+#directionArrow {
+  max-width: 350px;
+}
+
+.directioncw {
+  animation: rotatecw 10s infinite linear;
+}
+
+.directionccw {
+  animation: rotateccw 10s infinite linear;
+}
+
+@keyframes rotateccw {
+  0% {
+    transform: rotate(0deg) scaleX(-1);
+  }
+  100% {
+    transform: rotate(-360deg) scaleX(-1);
+  }
+}
+
+@keyframes rotatecw {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gradientAnimation {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.gradient-border {
+  z-index: 2;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(40% + 10px); /* Adding border width to the parent container */
+  height: calc(40% + 10px); /* Adding border width to the parent container */
+  max-width: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    #03a44b,
+    #eab700,
+    #c30037,
+    #0065a8,
+    #03a44b
+  );
+  background-size: 400% 100%;
+  animation: gradientAnimation 15s ease-in-out infinite;
+  padding: 5px;
+}
+
+#settings {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  background-color: #161616;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  border-radius: 5px; /* Adjust if needed to match the outer border-radius */
+  overflow: hidden;
+}
+
+.gradient-border::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  filter: blur(100px);
+
+  opacity: 0.4;
+}
+.picker {
+  position: relative;
+  width: 350px;
+  aspect-ratio: 3/1;
+  z-index: 5;
+}
+
+.option {
+  float: left;
+  width: calc(100% / 3);
+  height: auto;
+  cursor: pointer;
+  position: relative; /* Ensure this is relative for proper stacking */
+  z-index: 3; /* Ensure the options are above the selection */
+}
+
+.option img {
+  width: 100%;
+  height: 100%;
+}
+
+/* style.css */
+
+.underselection {
+  position: absolute;
+  z-index: 1;
+  width: 100%; /* Set the width to match the options */
+  aspect-ratio: 3/1;
+  background-color: #262626;
+  pointer-events: none;
+  transition: left 0.5s ease;
+  left: 0; /* Initial position set to the first option */
+  border-radius: 10px;
+}
+
+.selection {
+  position: absolute;
+  width: calc(100% / 3); /* Set the width to match the options */
+  aspect-ratio: 1/1; /* Maintain a square aspect ratio */
+  background-color: #202020;
+  pointer-events: none;
+  transition: left 0.5s ease;
+  left: 0; /* Initial position set to the first option */
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    #03a44b,
+    #eab700,
+    #c30037,
+    #0065a8,
+    #03a44b
+  );
+  background-size: 400% 100%;
+  animation: gradientAnimation 15s ease-in-out infinite;
+  z-index: 2;
+}
+
+.ready {
+  background-color: green;
+}
+
+.not-ready {
+  background-color: red;
+}
+
+#username {
+  width: calc(100% / 3 * 2);
+  height: 50px;
+  border-radius: 10px;
+  border-color: #575757;
+  background-color: #262626;
+  color: white;
+  font-size: large;
+  padding: 0;
+}
+
+#ready {
+  width: calc(100% / 4);
+  height: 50px;
+}
+
+h2,
+.user {
+  font-size: x-large;
+  font-weight: bold;
+}
