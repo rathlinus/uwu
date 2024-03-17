@@ -30,12 +30,9 @@ button {
   border: none;
   padding: 10px 20px;
   margin: 5px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-button:hover {
-  background-color: #555555; /* Slightly lighter on hover */
+  transition: background-color 0.3s !important;
 }
 
 /* Styles for input fields */
@@ -66,4 +63,29 @@ input[type="text"] {
 
 #gamesList button {
   margin-left: 10px;
+}
+
+/*hover effect for buttons*/
+.joingame:hover {
+  transition: background-color 0.3s !important;
+  background: linear-gradient(
+    135deg,
+    #03a44b,
+    #eab700,
+    #c30037,
+    #0065a8,
+    #03a44b
+  );
+  background-size: 400% 100%;
+  animation: gradientAnimation 15s ease-in-out infinite;
+}
+
+@keyframes gradientAnimation {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }

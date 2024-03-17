@@ -1,11 +1,15 @@
 var socket = io();
 
-var isMyTurn = true; // It's safer to start with false and let the server decide when it's the player's turn
+var isMyTurn = false;
 let colorPickeractive = false;
 let gameStarted = false;
 
 socket.on("dealCards", function (hand) {
   gameStarted = true;
+  // Hide Settings
+  const settings = document.getElementById("gradient-border");
+  settings.style.display = "none";
+
   const playerHand = document.getElementById("hand");
   playerHand.innerHTML = ""; // Clear existing cards
   hand.forEach((card, index) => {
@@ -60,10 +64,26 @@ socket.on("playerHandSizes", function (handSizes) {
     ...sortedIds.slice(0, myIndex),
   ].filter((id) => id !== mySocketId);
 
+  const totalPlayers = sortedIds.length;
+
   sortedOpponentIds.forEach((socketId, index) => {
-    let size = handSizes[socketId];
-    let positionClass = index === 0 ? "top" : "right"; // Default to right for all except the first
-    let opponentNumber = index + 1; // Determine opponent number (1, 2, or 3)
+    let size = handSizes[socketId].handSize;
+    let opponentNumber;
+    let positionClass;
+
+    if (totalPlayers === 2) {
+      opponentNumber = 1;
+      positionClass = "top";
+    } else if (totalPlayers === 3) {
+      opponentNumber = index + 1;
+      // The first opponent (opponent-1) should be on the top, the second (opponent-2) on the right
+      positionClass = opponentNumber === 1 ? "top" : "right";
+    } else if (totalPlayers === 4) {
+      // For 4 players, we'll assign positions as: 3 - left, 1 - top, 2 - right
+      opponentNumber = index + 1;
+      positionClass =
+        opponentNumber === 1 ? "left" : opponentNumber === 2 ? "top" : "right";
+    }
 
     let opponentHandId = `opponent-${opponentNumber}-hand`;
     let opponentHandContainer =
@@ -83,9 +103,12 @@ socket.on("playerHandSizes", function (handSizes) {
     // Create card placeholders
     for (let i = 0; i < size; i++) {
       let cardPlaceholder = document.createElement("img");
-      cardPlaceholder.classList.add("card", "opponent-card");
-      if (opponentNumber === 2 || opponentNumber === 3) {
-        // Only add vertical class to opponent 2 and 3
+      cardPlaceholder.classList.add("opponent-card");
+      // Add vertical class for specific conditions
+      if (
+        (totalPlayers === 3 && opponentNumber === 2) ||
+        (totalPlayers === 4 && (opponentNumber === 1 || opponentNumber === 3))
+      ) {
         cardPlaceholder.classList.add("vertical");
       }
       cardPlaceholder.src = "/img/white.png";
@@ -96,7 +119,20 @@ socket.on("playerHandSizes", function (handSizes) {
     if (!document.getElementById(opponentHandId)) {
       document.getElementById("opponents").appendChild(opponentHandContainer);
     }
+
+    // Add the username next to the hand
+    let username = document.createElement("p");
+    username.innerHTML = handSizes[socketId].username;
+    username.classList.add("username");
+    opponentHandContainer.appendChild(username);
   });
+
+  // Add the own username
+  let username = document.createElement("p");
+  ownusername = handSizes[mySocketId].username;
+  username.innerHTML = ownusername;
+  username.classList.add("username");
+  document.getElementById("ownusername").appendChild(username);
 });
 
 socket.on("clearHands", function () {
@@ -116,10 +152,14 @@ socket.on("clearHands", function () {
   });
 
   const activeElements = document.querySelectorAll(".active");
+  activeElements.forEach((element) => element.classList.remove("active"));
 
-  activeElements.forEach((element) => {
-    element.classList.remove("active");
-  });
+  const currentPlayerHandElement = document.getElementById(
+    `opponent-${currentPlayerid}-hand`
+  );
+  if (currentPlayerHandElement) {
+    currentPlayerHandElement.classList.add("active");
+  }
 });
 
 socket.on("drawCard", function (card) {
@@ -217,7 +257,7 @@ socket.on("cardPlayed", function (card) {
   }
   isMyTurn = false;
   var cardElement = document.createElement("img");
-  cardElement.classList.add("card", "card-played");
+  cardElement.classList.add("card-played");
   cardElement.src = `/img/${card.color}_${card.value}.png`;
   const rotationOffset = Math.random() * 40 - 20; // consistent rotation range
   cardElement.style.setProperty("--rotation-offset", `${rotationOffset}deg`);
@@ -269,9 +309,6 @@ function drop(event) {
 }
 
 socket.on("gameinfo", function (direction, currentPlayerid) {
-  //rotate the direction id
-
-  //add active class to the current player
   const activeElements = document.querySelectorAll(".active");
 
   activeElements.forEach((element) => {
@@ -280,8 +317,12 @@ socket.on("gameinfo", function (direction, currentPlayerid) {
     }
   });
 
-  const activeplayerHand = document.getElementsByClassName(currentPlayerid);
-  activeplayerHand[0].classList.add("active");
+  //set the current player as active
+  const currentPlayerHandElements =
+    document.getElementsByClassName(currentPlayerid);
+  for (let i = 0; i < currentPlayerHandElements.length; i++) {
+    currentPlayerHandElements[i].classList.add("active");
+  }
 
   console.log("direction", direction);
   if (direction === 1) {
@@ -335,9 +376,6 @@ socket.on("gameEnd", function (data) {
   specialCardsPlayed.textContent = `Special cards played: ${data.statistics.specialCardsPlayed}`;
   statsDiv.appendChild(specialCardsPlayed);
 
-  // Add other statistics as needed
-  // ...
-
   resultDiv.appendChild(statsDiv);
 
   // Optionally, add a button to reset the game or navigate elsewhere
@@ -347,11 +385,38 @@ socket.on("gameEnd", function (data) {
     socket.emit("resetGame");
   });
   resultDiv.appendChild(resetButton);
+
+  // Optionally, add a button to navigate back to the main menu
+  const mainMenuButton = document.createElement("button");
+  mainMenuButton.textContent = "Main Menu";
+  mainMenuButton.addEventListener("click", function () {
+    window.location.href = "/";
+  });
+  resultDiv.appendChild(mainMenuButton);
 });
 
 socket.on("notfound", function () {
   console.log("Game not found");
   window.location.href = "/";
+});
+
+socket.on("users", function (users) {
+  console.log("users", users);
+  const userList = document.getElementById("users");
+  userList.innerHTML = "";
+
+  users.forEach((user) => {
+    const userDiv = document.createElement("div");
+
+    userDiv.classList.add("user");
+    userDiv.textContent = user;
+    if (user.ready) {
+      userDiv.classList.add("ready");
+    } else {
+      userDiv.classList.add("notready");
+    }
+    userList.appendChild(userDiv);
+  });
 });
 
 function drawCard() {
@@ -365,8 +430,16 @@ function drawCard() {
 }
 
 document.addEventListener("mouseover", function (event) {
-  if (event.target.classList.contains("card")) {
-    const hoveredCard = event.target;
+  // Ensure we're working with an element
+  if (event.target.nodeType !== Node.ELEMENT_NODE) {
+    return;
+  }
+
+  // Use closest to find the nearest ancestor (or self) with the .card class
+  const hoveredCard = event.target.closest(".card");
+
+  // Proceed only if hoveredCard is not null
+  if (hoveredCard) {
     const playerHand = document.getElementById("hand");
     const cards = Array.from(playerHand.children);
     const hoveredIndex = cards.indexOf(hoveredCard);
@@ -550,8 +623,10 @@ function startgame() {
   if (gameStarted) {
     return;
   }
+  const username = document.getElementById("username").value;
+
   let gameId = window.location.pathname.split("/").pop();
-  socket.emit("startGame", gameId);
+  socket.emit("startGame", gameId, username);
 }
 
 function removeCard(card) {
@@ -620,3 +695,12 @@ const path = window.location.pathname;
 const gameId = path.split("/").pop();
 
 socket.emit("joinGame", gameId);
+
+function selectOption(option) {
+  var selection = document.getElementById("selection");
+  var pickerWidth = document.querySelector(".picker").offsetWidth;
+  var optionWidth = pickerWidth / 3; // since there are 3 options
+  // Calculate the left position based on the option index and width
+  var newLeft = (option - 1) * optionWidth;
+  selection.style.left = newLeft + "px";
+}

@@ -8,12 +8,41 @@
   <body style="background-color: #232323">
     <div id="game-info">
       <div id="player-info"></div>
-      <button onclick="startgame()">Start Game</button>
     </div>
+    <div class="gradient-border" id="gradient-border">
+      <div id="settings">
+        <div id="settingscontainer">
+          <div id="users"></div>
+          <div class="username">
+            <input
+              type="text"
+              name=""
+              id="username"
+              placeholder="Your Username"
+            />
+            <button onclick="startgame()" id="ready">Ready</button>
+          </div>
+          <h2>Choose the number of players</h2>
+
+          <div id="maxplayers" class="picker">
+            <div class="option" onclick="selectOption(1)">
+              <img src="/img/picker/2players.png" alt="Option 1" />
+            </div>
+            <div class="option" onclick="selectOption(2)">
+              <img src="/img/picker/3players.png" alt="Option 2" />
+            </div>
+            <div class="option" onclick="selectOption(3)">
+              <img src="/img/picker/4players.png" alt="Option 3" />
+            </div>
+            <div id="selection" class="selection"></div>
+            <div class="underselection"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="color-picker"></div>
-
     <div id="opponents"></div>
-
     <div id="game-area">
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -25,9 +54,9 @@
         id="directionArrow"
       >
         <defs>
-          <clipPath id="_clipPath_DQdCEpkGM7YphskII9FilycQHddZ06Nv">
+          <clippath id="_clipPath_DQdCEpkGM7YphskII9FilycQHddZ06Nv">
             <rect x="756.84" y="292.5" width="406.32" height="334" />
-          </clipPath>
+          </clippath>
         </defs>
         <g clip-path="url(#_clipPath_DQdCEpkGM7YphskII9FilycQHddZ06Nv)">
           <path
@@ -49,6 +78,7 @@
         <img class="drawCard maincard" src="/img/white.png" alt="" />
       </div>
     </div>
+    <div id="ownusername"></div>
     <div id="hand"></div>
 
     <script src="/game.js"></script>
