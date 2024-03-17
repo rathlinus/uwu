@@ -2,8 +2,10 @@ var socket = io();
 
 var isMyTurn = true; // It's safer to start with false and let the server decide when it's the player's turn
 let colorPickeractive = false;
+let gameStarted = false;
 
 socket.on("dealCards", function (hand) {
+  gameStarted = true;
   const playerHand = document.getElementById("hand");
   playerHand.innerHTML = ""; // Clear existing cards
   hand.forEach((card, index) => {
@@ -47,52 +49,51 @@ socket.on("dealCards", function (hand) {
   socketId.innerHTML = socket.id;
 });
 
-socket.on("opponentHandSize", function (change) {
-  console.log("Opponent hand size change: ", change);
-  const opponentHand = document.getElementById("opponent-hand");
-  // Calculate the new count, but do not update the DOM immediately
-  const newCount = opponentHand.children.length + change;
+socket.on("playerHandSizes", function (handSizes) {
+  console.log("Received hand sizes: ", handSizes);
 
-  // Animation for adding cards
-  if (change > 0) {
-    for (let i = 0; i < change; i++) {
-      let cardPlaceholder = document.createElement("img");
-      cardPlaceholder.classList.add("card");
-      cardPlaceholder.src = "/img/white.png";
-      // Start with reduced opacity and size for animation
-      cardPlaceholder.style.opacity = "0";
-      cardPlaceholder.style.transform = "scale(0.5)";
-      opponentHand.appendChild(cardPlaceholder);
+  const mySocketId = socket.id;
+  let opponentIndex = 0; // To differentiate between opponents
 
-      // Animate to full opacity and size
-      setTimeout(() => {
-        cardPlaceholder.style.opacity = "1";
-        cardPlaceholder.style.transform = "scale(1)";
-      }, 10 + i * 100); // Stagger the animations slightly for each card
-    }
-  }
+  Object.entries(handSizes).forEach(([socketId, size]) => {
+    if (socketId !== mySocketId) {
+      opponentIndex++;
+      let opponentHandId = `opponent-${opponentIndex}-hand`;
+      let opponentHandContainer =
+        document.getElementById(opponentHandId) ||
+        document.createElement("div");
+      opponentHandContainer.id = opponentHandId;
+      opponentHandContainer.classList.add(
+        "opponent-hand",
+        `opponent-${opponentIndex}`
+      );
 
-  // Animation for removing cards
-  if (change < 0) {
-    let cardsToRemove = Math.abs(change);
-    while (cardsToRemove > 0) {
-      let cardPlaceholder = opponentHand.lastElementChild;
-      if (cardPlaceholder) {
-        // Animate removal
-        cardPlaceholder.style.opacity = "0";
-        cardPlaceholder.style.transform = "scale(0.5)";
-        cardPlaceholder.addEventListener("transitionend", function () {
-          this.remove();
-        });
+      // Clear the previous hand (if any)
+      opponentHandContainer.innerHTML = "";
+
+      // Create card placeholders
+
+      for (let i = 0; i < size; i++) {
+        let cardPlaceholder = document.createElement("img");
+        cardPlaceholder.classList.add("card", "opponent-card");
+        if (opponentIndex !== 1) {
+          cardPlaceholder.classList.add("vertical");
+        }
+        cardPlaceholder.src = "/img/white.png";
+        opponentHandContainer.appendChild(cardPlaceholder);
       }
-      cardsToRemove--;
+
+      // Append or update the opponent's hand container
+      if (!document.getElementById(opponentHandId)) {
+        document.getElementById("opponents").appendChild(opponentHandContainer);
+      }
     }
-  }
+  });
 });
 
 socket.on("clearHands", function () {
   document.getElementById("hand").innerHTML = "";
-  document.getElementById("opponent-hand").innerHTML = "";
+  document.getElementById("opponents").innerHTML = "";
 
   // hide winner message
   const resultDiv = document.querySelector(".result-overlay");
@@ -103,7 +104,7 @@ socket.on("clearHands", function () {
   const gameArea = document.querySelectorAll("card-played");
 
   gameArea.forEach((element) => {
-    element.classList.remove("card-played");
+    element.remove();
   });
 
   const activeElements = document.querySelectorAll(".active");
@@ -216,7 +217,7 @@ socket.on("cardPlayed", function (card) {
 });
 
 socket.on("opponentDrewCard", function () {
-  const opponentHand = document.getElementById("opponent-hand");
+  const opponentHand = document.getElementById("opponents");
   let cardPlaceholder = document.createElement("img");
   cardPlaceholder.classList.add("card");
   cardPlaceholder.src = "img/white.png";
@@ -259,33 +260,65 @@ function drop(event) {
   playCardid(data);
 }
 
-socket.on("gameEnd", function (result) {
-  console.log("Game over! Result:", result);
-  // Create a modal or overlay div to show the result
+socket.on("gameEnd", function (data) {
+  console.log(
+    "Game over! Result:",
+    data.result,
+    "Statistics:",
+    data.statistics
+  );
+
+  // Create a modal or overlay div to show the result and statistics
   const resultDiv = document.createElement("div");
   resultDiv.classList.add("result-overlay");
   document.body.appendChild(resultDiv);
 
-  const message = document.createElement("h1");
-
-  if (result === "win") {
-    message.textContent = "You win!";
+  // Display the game result
+  const resultMessage = document.createElement("h1");
+  if (data.result === "win") {
+    resultMessage.textContent = "You win!";
+  } else if (data.result === "lose") {
+    resultMessage.textContent = "You lose!";
   }
-  if (result === "lose") {
-    message.textContent = "You lose!";
-  }
+  resultDiv.appendChild(resultMessage);
 
-  console.log("result", message);
-  resultDiv.appendChild(message);
+  // Display game statistics
+  const statsDiv = document.createElement("div");
+  statsDiv.classList.add("stats");
+
+  const totalCardsPlayed = document.createElement("p");
+  totalCardsPlayed.textContent = `Total cards played: ${data.statistics.totalCardsPlayed}`;
+  statsDiv.appendChild(totalCardsPlayed);
+
+  const winners = document.createElement("p");
+  winners.textContent = `Winners ${data.statistics.wins}`;
+  statsDiv.appendChild(winners);
+
+  const time = document.createElement("p");
+  time.textContent = `Time Played ${data.statistics.time}`;
+  statsDiv.appendChild(time);
+
+  const specialCardsPlayed = document.createElement("p");
+  specialCardsPlayed.textContent = `Special cards played: ${data.statistics.specialCardsPlayed}`;
+  statsDiv.appendChild(specialCardsPlayed);
+
+  // Add other statistics as needed
+  // ...
+
+  resultDiv.appendChild(statsDiv);
 
   // Optionally, add a button to reset the game or navigate elsewhere
   const resetButton = document.createElement("button");
   resetButton.textContent = "Play Again";
   resetButton.addEventListener("click", function () {
-    // Emit an event to restart the game or reload the page
-    window.location.reload(); // Simplest way to restart the game
+    socket.emit("resetGame");
   });
   resultDiv.appendChild(resetButton);
+});
+
+socket.on("notfound", function () {
+  console.log("Game not found");
+  window.location.href = "/";
 });
 
 function drawCard() {
@@ -356,7 +389,6 @@ function playCardid(data) {
   if (!isMyTurn) {
     return;
   }
-  console.log("playCardid", data);
 
   if (data.color === "white") {
     toggleColorPicker(data.uuid);
@@ -370,11 +402,20 @@ function playCardid(data) {
     return;
   }
 
-  var card = document.getElementById(data.uuid);
+  if (data.uuid) {
+    var card = document.getElementById(data.uuid);
+  } else {
+    var card = document.getElementById(data);
+  }
+
   if (!card) {
     console.error("Card element not found:", data);
     return;
   }
+
+  console.log("color", card.getAttribute("data-color"));
+  console.log("value", card.getAttribute("data-value"));
+  console.log("uuid", card.id);
 
   socket.emit("playCard", {
     color: card.getAttribute("data-color"),
@@ -386,6 +427,7 @@ function playCardid(data) {
 socket.on("invalidMove", function () {
   isMyTurn = true;
   document.getElementById("hand").classList.add("active");
+  console.log("invalid Move!");
 });
 
 function selectColorfromspecial(cardId, cardType, color) {
@@ -433,7 +475,7 @@ function toggleColorPicker(cardId) {
       colorOption.classList.add("picker-card");
       colorOption.setAttribute("data-color", color);
       colorOption.setAttribute("data-value", cardType);
-      draggable = true;
+      draggable = false;
 
       colorOption.addEventListener("click", function () {
         selectColorfromspecial(cardId, cardType, color);
@@ -469,6 +511,14 @@ function toggleColorPicker(cardId) {
 
 function showColorPicker(cardId) {
   toggleColorPicker(cardId);
+}
+
+function startgame() {
+  if (gameStarted) {
+    return;
+  }
+  let gameId = window.location.pathname.split("/").pop();
+  socket.emit("startGame", gameId);
 }
 
 function removeCard(card) {

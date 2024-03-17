@@ -10,14 +10,16 @@ body {
 }
 
 #opponent-hand,
-#hand {
+#hand,
+.opponent-hand {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 #opponent-hand .card,
-#hand .card {
+#hand .card,
+.opponent-hand .card {
   background-size: cover;
 }
 
@@ -78,8 +80,9 @@ body {
   transition: all 0.5s ease !important;
 }
 
+/* Additional styles for the result overlay content */
 .result-overlay {
-  position: fixed; /* Make it cover the whole screen */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -87,19 +90,41 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(
-    255,
-    255,
-    255,
-    0.2
-  ); /* Semi-transparent white background */
-  backdrop-filter: blur(5px); /* Blur effect */
-  z-index: 1000; /* Ensure it's above other content */
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  color: white;
+  font-family: "Arial", sans-serif;
+  padding: 20px;
+  flex-direction: column; /* Align children vertically */
 }
 
-.result-overlay h1,
+.result-overlay h1 {
+  font-size: 2.5em;
+  margin: 0 0 20px 0; /* Add space below the heading */
+  text-align: center; /* Center the text horizontally */
+}
+
+.result-overlay p {
+  font-size: 1.2em;
+  margin: 10px 0; /* Vertical spacing for each paragraph */
+  text-align: center; /* Center the text horizontally */
+}
+
 .result-overlay button {
-  text-align: center;
+  padding: 10px 20px;
+  font-size: 1em;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px; /* Space above the button */
+  align-self: center; /* Center the button horizontally */
+}
+
+.result-overlay button:hover {
+  background-color: #0056b3;
 }
 
 .drawCard {
@@ -127,4 +152,37 @@ body {
     1.2
   ); /* (150% zoom - Note: if the zoom is too large, it will go outside of the viewport) */
   transition: all 0.08s ease-in-out; /* Smooth transition for scaling */
+}
+
+/* General style for opponent hands */
+.opponent-hand {
+  display: flex;
+  position: absolute;
+}
+
+/* Opponent 1 (top, horizontally) */
+.opponent-1 {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Opponent 2 (right side, vertically) */
+.opponent-2 {
+  right: calc(15% + 50px);
+  top: 50%;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+/* Opponent 3 (left side, vertically) */
+.opponent-3 {
+  left: calc(15% + 50px);
+  top: 50%;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+.vertical {
+  margin: -66px 0 !important;
 }

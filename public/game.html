@@ -8,10 +8,12 @@
   <body style="background-color: #232323">
     <div id="game-info">
       <div id="player-info"></div>
+      <button onclick="startgame()">Start Game</button>
     </div>
     <div id="color-picker"></div>
 
-    <div id="opponent-hand"></div>
+    <div id="opponents"></div>
+
     <div id="game-area">
       <div id="deck" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
       <div id="draw-pile" onclick="drawCard()">

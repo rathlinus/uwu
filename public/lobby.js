@@ -37,14 +37,14 @@ socket.on("gamesList", (games) => {
 
   games.forEach((game) => {
     const gameElement = document.createElement("div");
-    gameElement.textContent = `Game ID: ${game.gameId} - ${game.playersCount}/2 players`;
+    gameElement.textContent = `Game ID: ${game.gameId} - ${game.playersCount}/4 players`;
 
     if (!game.isFull) {
       const joinButton = document.createElement("button");
       joinButton.textContent = "Join";
       joinButton.onclick = () => {
         document.getElementById("gameId").value = game.gameId;
-        socket.emit("joinGame", game.gameId);
+        window.location.href = `/game/${game.gameId}`;
       };
       gameElement.appendChild(joinButton);
     }
