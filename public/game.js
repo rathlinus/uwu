@@ -53,40 +53,48 @@ socket.on("playerHandSizes", function (handSizes) {
   console.log("Received hand sizes: ", handSizes);
 
   const mySocketId = socket.id;
-  let opponentIndex = 0; // To differentiate between opponents
+  const sortedIds = Object.keys(handSizes).sort();
+  const myIndex = sortedIds.indexOf(mySocketId);
+  const sortedOpponentIds = [
+    ...sortedIds.slice(myIndex + 1),
+    ...sortedIds.slice(0, myIndex),
+  ].filter((id) => id !== mySocketId);
 
-  Object.entries(handSizes).forEach(([socketId, size]) => {
-    if (socketId !== mySocketId) {
-      opponentIndex++;
-      let opponentHandId = `opponent-${opponentIndex}-hand`;
-      let opponentHandContainer =
-        document.getElementById(opponentHandId) ||
-        document.createElement("div");
-      opponentHandContainer.id = opponentHandId;
-      opponentHandContainer.classList.add(
-        "opponent-hand",
-        `opponent-${opponentIndex}`
-      );
+  sortedOpponentIds.forEach((socketId, index) => {
+    let size = handSizes[socketId];
+    let positionClass = index === 0 ? "top" : "right"; // Default to right for all except the first
+    let opponentNumber = index + 1; // Determine opponent number (1, 2, or 3)
 
-      // Clear the previous hand (if any)
-      opponentHandContainer.innerHTML = "";
+    let opponentHandId = `opponent-${opponentNumber}-hand`;
+    let opponentHandContainer =
+      document.getElementById(opponentHandId) || document.createElement("div");
+    opponentHandContainer.id = opponentHandId;
+    opponentHandContainer.className = ""; // Reset classes
+    opponentHandContainer.classList.add(
+      "opponent-hand",
+      `opponent-${opponentNumber}`,
+      positionClass,
+      `${socketId}`
+    );
 
-      // Create card placeholders
+    // Clear the previous hand (if any)
+    opponentHandContainer.innerHTML = "";
 
-      for (let i = 0; i < size; i++) {
-        let cardPlaceholder = document.createElement("img");
-        cardPlaceholder.classList.add("card", "opponent-card");
-        if (opponentIndex !== 1) {
-          cardPlaceholder.classList.add("vertical");
-        }
-        cardPlaceholder.src = "/img/white.png";
-        opponentHandContainer.appendChild(cardPlaceholder);
+    // Create card placeholders
+    for (let i = 0; i < size; i++) {
+      let cardPlaceholder = document.createElement("img");
+      cardPlaceholder.classList.add("card", "opponent-card");
+      if (opponentNumber === 2 || opponentNumber === 3) {
+        // Only add vertical class to opponent 2 and 3
+        cardPlaceholder.classList.add("vertical");
       }
+      cardPlaceholder.src = "/img/white.png";
+      opponentHandContainer.appendChild(cardPlaceholder);
+    }
 
-      // Append or update the opponent's hand container
-      if (!document.getElementById(opponentHandId)) {
-        document.getElementById("opponents").appendChild(opponentHandContainer);
-      }
+    // Append or update the opponent's hand container
+    if (!document.getElementById(opponentHandId)) {
+      document.getElementById("opponents").appendChild(opponentHandContainer);
     }
   });
 });
@@ -259,6 +267,31 @@ function drop(event) {
 
   playCardid(data);
 }
+
+socket.on("gameinfo", function (direction, currentPlayerid) {
+  //rotate the direction id
+
+  //add active class to the current player
+  const activeElements = document.querySelectorAll(".active");
+
+  activeElements.forEach((element) => {
+    if (element.classList.contains("opponent-hand")) {
+      element.classList.remove("active");
+    }
+  });
+
+  const activeplayerHand = document.getElementsByClassName(currentPlayerid);
+  activeplayerHand[0].classList.add("active");
+
+  console.log("direction", direction);
+  if (direction === 1) {
+    document.getElementById("directionArrow").classList.remove("directionccw");
+    document.getElementById("directionArrow").classList.add("directioncw");
+  } else {
+    document.getElementById("directionArrow").classList.remove("directioncw");
+    document.getElementById("directionArrow").classList.add("directionccw");
+  }
+});
 
 socket.on("gameEnd", function (data) {
   console.log(

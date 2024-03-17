@@ -45,7 +45,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  position: absolute;
+  width: 100%;
+  transform: translateY(-50%);
+  top: 50%;
 }
 
 #deck {
@@ -165,6 +168,7 @@ body {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
+  width: 100%;
 }
 
 /* Opponent 2 (right side, vertically) */
@@ -173,6 +177,7 @@ body {
   top: 50%;
   flex-direction: column;
   transform: translateY(-50%);
+  height: 50%;
 }
 
 /* Opponent 3 (left side, vertically) */
@@ -181,8 +186,39 @@ body {
   top: 50%;
   flex-direction: column;
   transform: translateY(-50%);
+  height: 50%;
 }
 
 .vertical {
   margin: -66px 0 !important;
+}
+
+#directionArrow {
+  max-width: 350px;
+}
+
+.directioncw {
+  animation: rotatecw 10s infinite linear;
+}
+
+.directionccw {
+  animation: rotateccw 10s infinite linear;
+}
+
+@keyframes rotateccw {
+  0% {
+    transform: rotate(0deg) scaleX(-1);
+  }
+  100% {
+    transform: rotate(-360deg) scaleX(-1);
+  }
+}
+
+@keyframes rotatecw {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

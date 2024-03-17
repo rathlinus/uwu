@@ -224,6 +224,11 @@ io.on("connection", (socket) => {
     const currentGameId = socket.currentGameId; // Retrieve the currentGameId from the socket
     if (!currentGameId || !games[currentGameId]) return;
 
+    //check if the game is in progress
+    if (!games[currentGameId].currentCard) {
+      return;
+    }
+
     const game = games[currentGameId];
 
     const playerIndex = game.players.findIndex((s) => s === socket);
@@ -290,6 +295,14 @@ io.on("connection", (socket) => {
             game.currentPlayerIndex
           );
           game.players[game.currentPlayerIndex].emit("yourTurn");
+
+          game.players.forEach((playerSocket) => {
+            playerSocket.emit(
+              "gameinfo",
+              game.direction,
+              game.players[game.currentPlayerIndex].id
+            );
+          });
           return;
         }
 
@@ -305,6 +318,14 @@ io.on("connection", (socket) => {
             game.currentPlayerIndex
           );
           game.players[game.currentPlayerIndex].emit("yourTurn");
+
+          game.players.forEach((playerSocket) => {
+            playerSocket.emit(
+              "gameinfo",
+              game.direction,
+              game.players[game.currentPlayerIndex].id
+            );
+          });
           return;
         }
       }
@@ -316,6 +337,13 @@ io.on("connection", (socket) => {
       game.players.length;
     console.log("General turn update, next turn for", game.currentPlayerIndex);
     game.players[game.currentPlayerIndex].emit("yourTurn");
+    game.players.forEach((playerSocket) => {
+      playerSocket.emit(
+        "gameinfo",
+        game.direction,
+        game.players[game.currentPlayerIndex].id
+      );
+    });
   }
 });
 
@@ -368,6 +396,8 @@ function startGame(gameId, overwritestart) {
     time: new Date().getTime(),
   };
 
+  game.direction = 1;
+
   for (let i = 0; i < game.players.length; i++) {}
   resetGame(game);
   console.log("Game started for game ID:", gameId);
@@ -395,6 +425,14 @@ function startGame(gameId, overwritestart) {
   // Notify each player about the current card
   game.players.forEach((playerSocket) => {
     playerSocket.emit("cardPlayed", game.currentCard);
+  });
+
+  game.players.forEach((playerSocket) => {
+    playerSocket.emit(
+      "gameinfo",
+      game.direction,
+      game.players[game.currentPlayerIndex].id
+    );
   });
 
   // Randomly select who starts the game
