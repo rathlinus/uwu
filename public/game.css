@@ -243,8 +243,9 @@ body {
   width: 100%;
 }
 
-.vertical {
-  margin: -66px 0 !important;
+#opponent-3-hand .opponent-card,
+#opponent-2-hand .opponent-card {
+  margin: -66px 0;
 }
 
 #directionArrow {

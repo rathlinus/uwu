@@ -53,37 +53,39 @@ socket.on("dealCards", function (hand) {
   socketId.innerHTML = socket.id;
 });
 
-socket.on("playerHandSizes", function (handSizes) {
-  console.log("Received hand sizes: ", handSizes);
-
+socket.on("playerHandSizes", function (data) {
+  const { handSizes, playerOrder } = data;
   const mySocketId = socket.id;
-  const sortedIds = Object.keys(handSizes).sort();
-  const myIndex = sortedIds.indexOf(mySocketId);
-  const sortedOpponentIds = [
-    ...sortedIds.slice(myIndex + 1),
-    ...sortedIds.slice(0, myIndex),
-  ].filter((id) => id !== mySocketId);
 
-  const totalPlayers = sortedIds.length;
+  // Rotate the playerOrder so that the player's ID is at the end
+  const myIndex = playerOrder.indexOf(mySocketId);
+  const rotatedOrder = [
+    ...playerOrder.slice(myIndex),
+    ...playerOrder.slice(0, myIndex),
+  ];
+
+  // Exclude the player's own ID
+  const sortedOpponentIds = rotatedOrder.filter((id) => id !== mySocketId);
+
+  if (sortedOpponentIds.length === 2) {
+    sortedOpponentIds.reverse(); // Reverse the order for 2 players
+  }
+
+  const totalPlayers = playerOrder.length;
+  // Determine the mapping based on the total number of players
+  const mapping =
+    totalPlayers === 4
+      ? [3, 1, 2]
+      : totalPlayers === 3
+      ? [2, 1]
+      : totalPlayers === 2
+      ? [1]
+      : []; // Add this line for the case of 2 players
 
   sortedOpponentIds.forEach((socketId, index) => {
-    let size = handSizes[socketId].handSize;
-    let opponentNumber;
-    let positionClass;
-
-    if (totalPlayers === 2) {
-      opponentNumber = 1;
-      positionClass = "top";
-    } else if (totalPlayers === 3) {
-      opponentNumber = index + 1;
-      // The first opponent (opponent-1) should be on the top, the second (opponent-2) on the right
-      positionClass = opponentNumber === 1 ? "top" : "right";
-    } else if (totalPlayers === 4) {
-      // For 4 players, we'll assign positions as: 3 - left, 1 - top, 2 - right
-      opponentNumber = index + 1;
-      positionClass =
-        opponentNumber === 1 ? "left" : opponentNumber === 2 ? "top" : "right";
-    }
+    const size = handSizes[socketId].handSize;
+    const opponentNumber = mapping[index]; // Get the opponent number from the mapping
+    const positionClass = ["left", "top", "right"][opponentNumber - 1]; // Assign the class based on opponent number
 
     let opponentHandId = `opponent-${opponentNumber}-hand`;
     let opponentHandContainer =
@@ -104,13 +106,6 @@ socket.on("playerHandSizes", function (handSizes) {
     for (let i = 0; i < size; i++) {
       let cardPlaceholder = document.createElement("img");
       cardPlaceholder.classList.add("opponent-card");
-      // Add vertical class for specific conditions
-      if (
-        (totalPlayers === 3 && opponentNumber === 2) ||
-        (totalPlayers === 4 && (opponentNumber === 1 || opponentNumber === 3))
-      ) {
-        cardPlaceholder.classList.add("vertical");
-      }
       cardPlaceholder.src = "/img/white.png";
       opponentHandContainer.appendChild(cardPlaceholder);
     }
@@ -127,12 +122,15 @@ socket.on("playerHandSizes", function (handSizes) {
     opponentHandContainer.appendChild(username);
   });
 
-  // Add the own username
-  let username = document.createElement("p");
-  ownusername = handSizes[mySocketId].username;
-  username.innerHTML = ownusername;
-  username.classList.add("username");
-  document.getElementById("ownusername").appendChild(username);
+  // Handle the own player's username display (if needed)
+  let ownUsernameContainer = document.getElementById("own-username");
+  if (!ownUsernameContainer) {
+    ownUsernameContainer = document.createElement("p");
+    ownUsernameContainer.id = "own-username";
+    document.getElementById("ownusername").appendChild(ownUsernameContainer);
+  }
+  ownUsernameContainer.innerHTML = handSizes[mySocketId].username;
+  ownUsernameContainer.classList.add("username");
 });
 
 socket.on("clearHands", function () {

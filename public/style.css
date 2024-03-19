@@ -77,7 +77,7 @@ input[type="text"] {
     #03a44b
   );
   background-size: 400% 100%;
-  animation: gradientAnimation 15s ease-in-out infinite;
+  animation: gradientAnimation 5s ease-in-out infinite;
 }
 
 @keyframes gradientAnimation {

@@ -387,21 +387,28 @@ function resetGame(game) {
 }
 
 function emitPlayerHandSizes(game) {
-  // Create an object to hold the hand sizes for each player
   let handSizes = {};
+  let playerOrder = game.players.map((player) => player.id);
 
-  // Iterate over each player to calculate hand sizes
+  // Adjust the playerOrder array to start from the currentPlayerIndex
+  let orderedPlayerIds = [
+    ...playerOrder.slice(game.currentPlayerIndex),
+    ...playerOrder.slice(0, game.currentPlayerIndex),
+  ];
+
   game.players.forEach((player) => {
-    //also add the usernames to the handSizes object
     handSizes[player.id] = {
       handSize: player.hand.length,
       username: player.username,
     };
   });
 
-  // Now emit the hand sizes to each player
+  // Emit the hand sizes and the ordered player IDs to each player
   game.players.forEach((player) => {
-    player.emit("playerHandSizes", handSizes);
+    player.emit("playerHandSizes", {
+      handSizes,
+      playerOrder: orderedPlayerIds,
+    });
   });
 }
 
