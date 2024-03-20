@@ -29,6 +29,7 @@ app.get("/game/:gameId", (req, res) => {
   } else {
     games[gameId] = {
       players: [],
+      currentadminid: null,
       currentPlayerIndex: 0,
       deck: [],
       currentCard: null,
@@ -55,8 +56,10 @@ io.on("connection", (socket) => {
 
   socket.on("createGame", () => {
     const gameId = generategameId();
+    const currentadminid = socket.id;
     games[gameId] = {
       players: [socket],
+      currentadminid: currentadminid,
       currentPlayerIndex: 0,
       deck: [],
       currentCard: null,
@@ -73,6 +76,15 @@ io.on("connection", (socket) => {
     socket.emit("gameCreated", gameId);
   });
 
+  socket.on("settings", (gameId, settings) => {
+    if (games[gameId].currentadminid === socket.id) {
+      games[gameId].settings = settings;
+      console.log("Settings changed");
+    } else {
+      console.log("Not admin");
+    }
+  });
+
   socket.on("joinGame", (gameId) => {
     if (games[gameId] && games[gameId].players.length < 4) {
       //check if player is already in the game
@@ -81,6 +93,21 @@ io.on("connection", (socket) => {
       socket.currentGameId = gameId; // Store gameId on the socket object
       socket.emit("joinedGame", gameId);
       console.log(`Player joined game with ID: ${gameId}`);
+
+      //check if admin is null, if so, set the admin to the player
+      if (games[gameId].currentadminid === null) {
+        games[gameId].currentadminid = socket.id;
+      }
+
+      //emit if he is the admin
+      if (games[gameId].currentadminid === socket.id) {
+        socket.emit("admin");
+      }
+
+      //if admin is null, set the admin to the player
+      if (games[gameId].currentadminid === null) {
+        games[gameId].currentadminid = socket.id;
+      }
 
       startGame(gameId);
     } else {
@@ -91,8 +118,27 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("startGame", (gameId, username) => {
+  socket.on("startGame", (gameId) => {
+    //check if the player is the admin
+    if (!games[gameId]) {
+      socket.emit("lobby");
+      return;
+    }
+
+    if (games[gameId].currentadminid === socket.id) {
+      startGame(gameId, "start");
+    } else {
+      console.log("Not admin");
+    }
+  });
+
+  socket.on("username", (gameId, username) => {
     //add username to player
+    if (!games[gameId]) {
+      socket.emit("lobby");
+      return;
+    }
+
     const playerIndex = games[gameId].players.findIndex((s) => s === socket);
     games[gameId].players[playerIndex].username = username;
 
@@ -105,20 +151,46 @@ io.on("connection", (socket) => {
       }
     });
 
-    if (everyonehasusername) {
-      startGame(gameId, "start");
-    } else {
-      emitusernamelist(gameId);
-    }
+    emitusernamelist(gameId);
   });
 
   socket.on("disconnect", () => {
     const gameId = socket.currentGameId;
+
+    //check if game exists
+    if (!games[gameId]) {
+      return;
+    }
+
     if (gameId && games[gameId]) {
       const game = games[gameId];
       game.players = game.players.filter((player) => player !== socket);
     }
+
+    // Check if the admin has left the game and if chosen a new random admin
+    if (gameId && games[gameId].currentadminid === socket.id) {
+      if (games[gameId].players.length > 0) {
+        games[gameId].currentadminid =
+          games[gameId].players[
+            Math.floor(Math.random() * games[gameId].players.length)
+          ].id;
+
+        //inform the new admin
+        games[gameId].players.forEach((player) => {
+          if (player.id === games[gameId].currentadminid) {
+            player.emit("admin");
+          }
+        });
+      } else {
+        delete games[gameId];
+      }
+    }
+
     refreshGamesList();
+
+    if (!games[gameId]) {
+      return;
+    }
 
     if (gameId && games[gameId].players.length === 0) {
       delete games[gameId];
@@ -240,6 +312,7 @@ io.on("connection", (socket) => {
     if (!games[gameId]) {
       // Back to the lobby
       console.log("Game not found");
+      socket.emit("lobby");
       return;
     }
 
@@ -434,7 +507,6 @@ function startGame(gameId, overwritestart) {
   let everyonehasusername = true;
   game.players.forEach((player) => {
     if (!player.username) {
-      console.log("Not all players have a username");
       everyonehasusername = false;
     }
   });
@@ -582,16 +654,12 @@ function checkForWinner(game, playerSocket) {
       statistics: game.statistics,
     });
 
-    //add winner to statistics
-
     // Find and notify the loser(s) and send them the statistics
     game.players.forEach((p, idx) => {
       if (idx !== playerIndex) {
         p.emit("gameEnd", { result: "lose", statistics: game.statistics });
       }
     });
-
-    // Optionally, you might want to reset or clear the statistics after the game ends
   }
 }
 
@@ -608,5 +676,5 @@ function refreshGamesList() {
   io.emit("gamesList", gamesInfo);
 }
 
-const port = 3000;
+const port = 3006;
 server.listen(port, () => console.log(`Listening on port ${port}`));
